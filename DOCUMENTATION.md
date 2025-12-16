@@ -1,6 +1,6 @@
 # SDRG Technical Documentation
 
-This document provides a comprehensive deep-dive into the Numerical Strong Disorder Renormalisation Group (SDRG) codebase. It details the internal data structures, algorithmic flows, and mathematical rules used to simulate random quantum systems.
+This document details the internal data structures, algorithmic flows, and renormalization rules implemented in the Numerical SDRG codebase.
 
 ## 1. Codebase Architecture
 
@@ -101,7 +101,7 @@ while NumberOfActiveNodes > 0:
 
 ## 5. Step 1: The Search (Activated Dijkstra)
 
-The critical optimization in this codebase is the **Activated Dijkstra** search. It finds the item with the smallest 'range' (largest energy) by exploring from a random active site.
+The key optimization is the **Activated Dijkstra** search: it finds the smallest 'range' (largest energy) by exploring from a random active site rather than scanning all nodes.
 
 ### Pseudocode: Activated Dijkstra
 ```python
@@ -157,7 +157,7 @@ function findLocalMinimum():
 
 ## 6. Step 2: Decimation & Renormalization
 
-Once a target is identified, the physical degrees of freedom are integrated out (decimated), and the effective couplings are renormalized.
+Once a target is identified, the corresponding degree of freedom is integrated out and effective couplings are renormalized.
 
 ### Node Decimation
 Occurs when a magnetic moment $\Omega = h_i$ is the largest energy scale. The site is frozen, and effective bonds are created across it.
@@ -256,7 +256,7 @@ function ProcessNegativeEdge(edge(source, target), negative_distance):
 
 ## 7. Step 3: Local Graph Repair (`smart_utilities.cpp`)
 
-A significant amount of development effort went into ensuring the "Smart" algorithm maintains a consistent graph state after local updates. Since we do not rebuild the graph from scratch, we must manually repair the local topology.
+The "Smart" algorithm requires careful bookkeeping to maintain a consistent graph state after local updates. The following utility functions handle this.
 
 ### 1. `updateAllEdgeDistancesFromNode`
 **Problem**: When a node's moment $h_i$ changes (or is decimated), the effective distances to *all* its neighbors change.
@@ -340,7 +340,7 @@ function RemoveDuplicateEdges(node):
 
 ### 4. Potential Optimizations
 
-Currently, the repair logic prioritizes correctness over absolute peak performance. Several algorithmic improvements could be implemented to speed up this phase:
+The repair logic prioritizes correctness. Potential speedups:
 
 1.  **Batch Dijkstra for `reassignInactiveEdges`**:
     -   **Current**: The code calls `ActivatedDijkstra` separately for every node inside the decimated cluster to find the distance to the boundary ( $O(k \cdot D)$ where $k$ is cluster size).
@@ -414,7 +414,7 @@ function DumbDecimate(target):
 
 ## 9. Concurrency Model
 
-The project maximizes performance using a two-tier concurrency strategy.
+Two-tier concurrency strategy:
 
 ### Internal Threading (Shared Memory)
 Used in `graph_sample.cpp` for analyzing the final state.

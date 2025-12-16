@@ -1,13 +1,13 @@
 # Numerical Strong Disorder Renormalisation Group (SDRG)
 
-This repository contains an efficient C++ implementation of the numerical Strong Disorder Renormalisation Group (SDRG) algorithm, primarily designed for studying random quantum models such as the Ising and Potts models. The implementation leverages the Boost Graph Library for specialized graph representations and supports parallel execution for performance scaling.
+C++ implementation of the numerical Strong Disorder Renormalisation Group (SDRG) algorithm for studying random quantum Ising and Potts models. Uses Boost Graph Library for graph representation and supports parallel execution.
 
 ## Overview
 
-The Strong Disorder Renormalisation Group (SDRG) method is a powerful technique for studying the low-energy physics of disordered quantum many-body systems. This code implements the algorithms developed by István A. Kovács and Ferenc Iglói, as detailed in their seminal papers.
+The SDRG method is a real-space renormalization technique for disordered quantum many-body systems. This implementation follows the algorithms of Kovács and Iglói.
 
 ### Key Features
-- **Efficient Graph Representation**: Utilizes Boost Graph Library for optimized performance.
+- **Graph Representation**: Boost Graph Library (BGL) adjacency list.
 - **Model Support**: Capable of simulating random transverse-field Ising models and Potts models.
 - **Lattice Support**: Supports both **Chain** (1D) and **Square** (2D) lattice geometries.
 - **Parallel Execution**: Includes scripts for parallelizing simulations across multiple parameters using GNU Parallel.
@@ -15,9 +15,9 @@ The Strong Disorder Renormalisation Group (SDRG) method is a powerful technique 
   - Von Neumann Entropy
   - Mutual Information
   - Logarithmic Negativity
-- **Smart & Dumb Modes**: Includes both critical (smart) and naive (dumb) decimation strategies for comparative study.
+- **Smart & Dumb Modes**: Optimized local search (smart) and naive global search (dumb) for benchmarking.
 
-For a deep dive into the code architecture and algorithms, please refer to [DOCUMENTATION.md](DOCUMENTATION.md).
+See [DOCUMENTATION.md](DOCUMENTATION.md) for algorithmic details.
 
 ## Prerequisites
 
@@ -38,8 +38,7 @@ To build and run this project, you need:
     cd SDRG
     ```
 
-2.  **Compile the code**:
-    The project includes a `Makefile` for easy compilation.
+2.  **Compile**:
     ```bash
     make
     ```
@@ -120,7 +119,7 @@ parallel ./run.sh ::: {1..10} ::: 64 ::: 0.00
 
 ## Visualization & Analysis
 
-This repository includes Python notebooks and scripts to visualize the simulation results.
+Python notebooks for visualization:
 
 ### 1. Lattice Visualization (`plotter.ipynb`)
 
@@ -140,7 +139,7 @@ This notebook analyzes the statistical properties of the decimated graph.
 
 ## Concurrency & Performance
 
-This project is optimized for performance using two levels of concurrency:
+Two levels of concurrency:
 
 1.  **Internal Multithreading (Shared Memory)**:
     -   Used for calculating physical observables (Cluster Statistics, Entanglement Entropy) after the decimation is complete.
@@ -154,13 +153,13 @@ This project is optimized for performance using two levels of concurrency:
 
 ## Advanced Features
 
--   **Activated Dijkstra Optimization**: Retrieves the next decimation target using a localized shortest-path search rather than a global heap, offering superior scaling for large lattices.
--   **Instability Resolution**: Automatically detects and resolves "negative edge" instabilities (a common pathology in 2D SDRG) to maintain physical consistency.
--   **Persistence Analysis**: Includes tools to measure cluster persistence and percolation probabilities via Monte Carlo sampling.
+-   **Activated Dijkstra**: Finds next decimation target via localized shortest-path search instead of global scan.
+-   **Instability Resolution**: Detects and resolves negative-edge instabilities (2D SDRG pathology).
+-   **Persistence Analysis**: Monte Carlo sampling for cluster persistence and percolation probabilities.
 
 ## References
 
-The algorithms and methodologies implemented here are based on the following research:
+Based on:
 
 1.  **Paper 1**: [Phys. Rev. B 82 054437 (2010)](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.82.054437)
 2.  **Paper 2**: [Phys. Rev. B 83 174207 (2011)](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.83.174207)
