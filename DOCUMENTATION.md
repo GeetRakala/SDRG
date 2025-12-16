@@ -149,6 +149,10 @@ function findLocalMinimum():
         dist1 = dist2
 ```
 
+### Potential Optimizations
+1.  **Temporal Locality**: The next decimation event is statistically likely to occur near the previous one (due to range reductions). Instead of restarting `findLocalMinimum` from a random node, biasing the start node selection towards the last decimated neighborhood could speed up convergence.
+2.  **Parallel Independent Searches**: If the graph has multiple disjoint low-energy excitations (local minima separated by large distances), these could potentially be found and decimated in parallel, provided their "light cones" of influence do not overlap.
+
 ---
 
 ## 6. Step 2: Decimation & Renormalization
@@ -310,6 +314,22 @@ function RemoveDuplicateEdges(node):
               RemoveEdge(e)
 ```
 
+### 4. Potential Optimizations
+
+Currently, the repair logic prioritizes correctness over absolute peak performance. Several algorithmic improvements could be implemented to speed up this phase:
+
+1.  **Batch Dijkstra for `reassignInactiveEdges`**:
+    -   **Current**: The code calls `ActivatedDijkstra` separately for every node inside the decimated cluster to find the distance to the boundary ($O(k \cdot D)$ where $k$ is cluster size).
+    -   **Proposed**: Run Dijkstra *once* starting simultaneously from all boundary nodes neighbors inwards. This effectively computes the distance field in a single pass ($O(D)$).
+
+2.  **Edge Deduplication via Data Structures**:
+    -   **Current**: `removeDuplicateEdges` manually filters edges using a hash map after every merge operation.
+    -   **Proposed**: Switch the underlying BGL graph type to use `boost::setS` for the edge container. This would automatically enforce unique edges at the data structure level, eliminating the need for manual cleanup passes (at the cost of slightly slower edge insertion).
+
+3.  **Lazy Updates**:
+    -   **Current**: `updateAllEdgeDistancesFromNode` eagerly updates every single neighbor's edge weight immediately after a renormalization step.
+    -   **Proposed**: Store a "range shift" accumulator on nodes. Only apply the subtraction $d_{new} = d_{old} - \Delta range$ lazily when the edge is next accessed during a search. This avoids processing edges that might be decimated later before they are ever traversed again.
+
 ---
 
 ## 8. The Naive SDRG Algorithm ("Dumb" Mode)
@@ -361,6 +381,9 @@ Used in `graph_sample.cpp` for analyzing the final state.
 ### External Parallelism (Embarrassingly Parallel)
 Used for parameter sweeps via `parallel.sh`, which wraps GNU Parallel to distribute isolated simulation instances across CPU cores.
 
+### Potential Optimizations
+1.  **Lock-Free Accumulation**: `calculateClusterStatistics` uses a shared mutex to merge results from every chunk. Using thread-local accumulation maps and a single final reduction step would eliminate contention.
+2.  **Work Stealing**: Static chunking does not account for variance in cluster processing time. A work-stealing queue would better balance the load across threads.
 ---
 
 ## 10. Visualization
@@ -397,3 +420,6 @@ function SampleNodes(graph, num_trials):
         
     return total_unique_clusters / num_trials
 ```
+
+### Potential Optimizations
+1.  **Union-Find Data Structure**: The current sampling logic implicitly traverses the graph or relies on properties that might be slow to query. Implementing a Union-Find (Disjoint Set Union) structure would allow $O(1)$ verification of whether two nodes belong to the same cluster, significantly speeding up the unique cluster counting in `SampleNodes`.
