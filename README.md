@@ -2,6 +2,11 @@
 
 C++ implementation of the numerical Strong Disorder Renormalisation Group (SDRG) algorithm for studying random quantum Ising and Potts models. Uses Boost Graph Library for graph representation and supports parallel execution.
 
+![License](https://img.shields.io/badge/license-GPLv3-blue.svg)
+![C++ Standard](https://img.shields.io/badge/C%2B%2B-17-blue.svg?logo=c%2B%2B)
+![Boost](https://img.shields.io/badge/Boost-Graph-orange)
+![Parallel](https://img.shields.io/badge/Parallel-GNU-green)
+
 ## Overview
 
 The SDRG method is a real-space renormalization technique for disordered quantum many-body systems. This implementation follows the algorithms of Kovács and Iglói.
