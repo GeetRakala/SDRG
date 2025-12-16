@@ -163,10 +163,9 @@ Once a target is identified, the physical degrees of freedom are integrated out 
 Occurs when a magnetic moment $\Omega = h_i$ is the largest energy scale. The site is frozen, and effective bonds are created across it.
 
 **Renormalization Rule**:
-
-$$
+```math
 J_{new} \approx \frac{J_{ik} J_{il}}{h_i} \implies \tilde{d}_{kl} = d_{ik} + d_{il} - r_i
-$$
+```
 
 **Pseudocode**:
 ```python
@@ -192,10 +191,9 @@ function DecimateNode(node_i):
 Occurs when a bond coupling $\Omega = J_{ij}$ is the largest energy scale. The two sites $i$ and $j$ effectively lock into a single cluster.
 
 **Renormalization Rule**:
-
-$$
+```math
 h_{new} \approx \frac{h_i h_j}{J_{ij}} \implies \tilde{r}_{new} = r_i + r_j - d_{ij}
-$$
+```
 
 **Pseudocode**:
 ```python
@@ -245,10 +243,9 @@ A significant amount of development effort went into ensuring the "Smart" algori
 ### 1. `updateAllEdgeDistancesFromNode`
 **Problem**: When a node's moment $h_i$ changes (or is decimated), the effective distances to *all* its neighbors change.
 **Solution**: This function iterates over all incident edges and updates their weights:
-
-$$
+```math
 d_{new} = d_{old} - \frac{range_{node}}{2}
-$$
+```
 It also recursively checks for negative edge creation (instabilities) and triggers `processNegativeEdge` if found.
 
 **Pseudocode**:
