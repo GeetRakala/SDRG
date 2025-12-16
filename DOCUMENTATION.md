@@ -103,7 +103,7 @@ while NumberOfActiveNodes > 0:
 
 The key optimization is the **Activated Dijkstra** search: it finds the smallest 'range' (largest energy) by exploring from a random active site rather than scanning all nodes.
 
-### Pseudocode: Activated Dijkstra
+### `ActivatedDijkstra`
 ```python
 function ActivatedDijkstra(startNode, endNode, findToEnd):
     PriorityQueue pq
@@ -160,14 +160,10 @@ function findLocalMinimum():
 Once a target is identified, the corresponding degree of freedom is integrated out and effective couplings are renormalized.
 
 ### Node Decimation
-Occurs when a magnetic moment $\Omega = h_i$ is the largest energy scale. The site is frozen, and effective bonds are created across it.
-
-**Renormalization Rule**:
+Occurs when a magnetic moment $\Omega = h_i$ is the largest energy scale. The site is frozen and effective bonds are created across it.
 ```math
 J_{new} \approx \frac{J_{ik} J_{il}}{h_i} \implies \tilde{d}_{kl} = d_{ik} + d_{il} - r_i
 ```
-
-**Pseudocode**:
 ```python
 function DecimateNode(node_i):
     # Mark node_i and all nodes in the same cluster as Inactive
@@ -184,14 +180,10 @@ function DecimateNode(node_i):
 > In the Smart algorithm, node decimation does NOT explicitly create new edges between pairs of neighbors. Instead, the effective couplings are implicitly maintained through the `updateAllEdgeDistancesFromNode` call, which renormalizes the outgoing distances. New effective edges between former neighbors are discovered naturally by subsequent Dijkstra searches through the now-Inactive node.
 
 ### Edge Decimation
-Occurs when a bond coupling $\Omega = J_{ij}$ is the largest energy scale. The two sites $i$ and $j$ effectively lock into a single cluster.
-
-**Renormalization Rule**:
+Occurs when a bond coupling $\Omega = J_{ij}$ is the largest energy scale. Sites $i$ and $j$ lock into a single cluster.
 ```math
 h_{new} \approx \frac{h_i h_j}{J_{ij}} \implies \tilde{r}_{new} = r_i + r_j - d_{ij}
 ```
-
-**Pseudocode**:
 ```python
 function DecimateEdge(path, dist_ij):
     # path = [firstNode, ...intermediate inactive nodes..., lastNode]
@@ -225,9 +217,7 @@ function DecimateEdge(path, dist_ij):
 ```
 
 ### Instability Handling (`processNegativeEdge`)
-In 2D/3D, the subtraction $d_{ik} + d_{il} - r_i$ can sometimes yield a negative value, implying an unphysical "infinite" coupling. This scenario is handled by creating shortcut edges that bypass the problematic node.
-
-**Pseudocode**:
+In 2D/3D, the subtraction $d_{ik} + d_{il} - r_i$ can yield a negative value (unphysical "infinite" coupling). This is resolved by creating shortcut edges that bypass the problematic node.
 ```python
 function ProcessNegativeEdge(edge(source, target), negative_distance):
     # Create shortcut edges from source to all neighbors of target
@@ -259,12 +249,11 @@ function ProcessNegativeEdge(edge(source, target), negative_distance):
 The "Smart" algorithm requires careful bookkeeping to maintain a consistent graph state after local updates. The following utility functions handle this.
 
 ### 1. `updateAllEdgeDistancesFromNode`
-**Problem**: When a node's moment $h_i$ changes (or is decimated), the effective distances to *all* its neighbors change.
-**Solution**: This function iterates over all incident edges and updates their weights:
+When a node's moment $h_i$ changes (or is decimated), the effective distances to all its neighbors must be updated:
 ```math
 d_{new} = d_{old} - \frac{r_i}{2}
 ```
-It also recursively checks for negative edge creation (instabilities) and triggers `processNegativeEdge` if found.
+Negative results trigger `processNegativeEdge` to handle instabilities.
 
 **Pseudocode**:
 ```python
@@ -286,8 +275,7 @@ function UpdateAllEdgeDistancesFromNode(node):
 ```
 
 ### 2. `reassignInactiveEdges`
-**Problem**: When a chain of nodes is decimated into a cluster, the original edges connecting the internal (now dead) nodes to the outside world must be rerouted to the new cluster "head".
-**Solution**: The function calculates the shortest path through the decimated cluster (using Activated Dijkstra) and creates new edges from the cluster head to the external neighbors, ensuring the effective coupling is physically correct.
+When a chain of nodes is decimated, edges from internal (now dead) nodes must be rerouted to the cluster head. The function computes shortest paths through the decimated cluster via Activated Dijkstra and creates new edges with corrected weights.
 
 **Pseudocode**:
 ```python
@@ -310,8 +298,8 @@ function ReassignInactiveEdges(new_source, path):
 ```
 
 ### 3. Topological Cleanup
--   **`removeSelfLoops`**: Merging nodes often creates edges from a node to itself ($i \to i$). These are unphysical in this model and are removed.
--   **`removeDuplicateEdges`**: Merging can create multiple parallel edges between two nodes. This function keeps only the strongest bond (minimum distance) and removes the rest.
+-   **`removeSelfLoops`**: Removes edges from a node to itself ($i \to i$), which are unphysical.
+-   **`removeDuplicateEdges`**: Keeps only the minimum-distance edge when multiple parallel edges exist between two nodes.
 
 **Pseudocode**:
 ```python
@@ -360,14 +348,11 @@ The repair logic prioritizes correctness. Potential speedups:
 
 For verification and performance benchmarking, the codebase includes a "Dumb" mode (enabled via `dumb = true` in `config.txt`). This implements the standard, brute-force SDRG approach.
 
-### Search Logic (`dumb_search.cpp`)
-Unlike the Smart mode which searches locally, the Naive mode scans the **entire** graph at every step to find the global minimum energy scale.
-**Complexity**: $O(N)$ per step, leading to $O(N^2)$ total complexity.
+### Search (`dumb_search.cpp`)
+Scans the entire graph at every step to find the global minimum. Complexity: $O(N)$ per step → $O(N^2)$ total.
 
-### Decimation Logic (`dumb_decimate.cpp`)
-The rules are identical, but no complex local repair is needed since the neighbor distances will be re-evaluated globally in the next step anyway.
-
-**Pseudocode**:
+### Decimation (`dumb_decimate.cpp`)
+Same renormalization rules, but no local repair needed since the next step rescans globally.
 ```python
 function DumbDecimate(target):
     if target is Node:
@@ -432,7 +417,7 @@ Used for parameter sweeps via `parallel.sh`, which wraps GNU Parallel to distrib
 
 ## 10. Visualization
 
-The project generates artifacts that can be visualized using Python notebooks in the `notebooks/` directory.
+Python notebooks in `notebooks/`:
 
 -   **`plotter.ipynb`**: Visualizes the lattice topology and colored clusters. Requires `json=true` in config.
 -   **`cluster_dist.ipynb`**: Plots statistical distributions of cluster sizes and moments from CSV logs.
@@ -441,12 +426,10 @@ The project generates artifacts that can be visualized using Python notebooks in
 
 ## 11. Advanced Topics: Graph Persistence
 
-To assist in studying the percolation properties of the random clusters, `graph_persistence.cpp` tools are available.
+Tools in `graph_persistence.cpp` for studying percolation properties:
 
--   **Sampling**: The `sampleNodes` function performs a "coupon collector" style sampling — it counts how many random node samples are needed until every unique cluster has been seen at least once.
--   **Metric**: `computeAverageSamples` averages this count over multiple trials to estimate the expected "cover time" for the cluster structure.
-
-**Pseudocode**:
+-   **`sampleNodes`**: Coupon collector sampling — counts how many random node samples are needed until every cluster has been seen.
+-   **`computeAverageSamples`**: Averages the above over multiple trials (expected "cover time").
 ```python
 function SampleNodes(graph):
     all_clusters = GetUniqueClusters(graph)

@@ -112,7 +112,7 @@ parallel ./run.sh ::: {1..10} ::: 64 ::: 0.00
   - `dumb_*.cpp`: Implementation of the naive "Dumb" SDRG algorithm.
 - **`csvfiles/`**: Stores simulation results (Cluster statistics, Entanglement Entropy, etc.).
 - **`json/`**: Stores graph state snapshots if `json=true` is enabled.
-- **`scripts`**: Helper scripts (`run.sh`, `parallel.sh`, `submit.sh`).
+- **`scripts/`**: Helper scripts (`run.sh`, `parallel.sh`, `submit.sh`).
 - **`notebooks`**:
   - `plotter.ipynb`: Visualizes the SDRG graph evolution using JSON outputs.
   - `cluster_dist.ipynb`: Analyzes cluster distributions.
@@ -123,19 +123,19 @@ Python notebooks for visualization:
 
 ### 1. Lattice Visualization (`plotter.ipynb`)
 
-This notebook visualizes the decimation process on the 2D lattice.
+Visualizes the decimation process on the 2D lattice.
 
--   **Requirement**: You must enable JSON output in `config.txt` by setting `json=true`.
--   **Output**: The simulation will generate `.json` files in the `json/` directory, representing the state of the graph at each step.
--   **Usage**: Open `plotter.ipynb` (which internally uses `plotter.py`) to read these JSON files and generate PDF snapshots of the lattice structure.
--   **Colors**: Clusters are color-coded to visualize how nodes are merged.
+-   **Requirement**: Enable JSON output (`json=true` in `config.txt`).
+-   **Output**: `.json` files in `json/` representing graph state at each step.
+-   **Usage**: Run `plotter.ipynb` to generate PDF snapshots.
+-   **Colors**: Clusters are color-coded.
 
 ### 2. Cluster Statistics (`cluster_dist.ipynb`)
 
-This notebook analyzes the statistical properties of the decimated graph.
+Analyzes statistical properties of the decimated graph.
 
--   **Input**: Reads CSV files generated in the `csvfiles/` directory (e.g., `*_statistics.csv`).
--   **Metrics**: Plots the distribution of cluster sizes and other relevant physical quantities to study the critical behavior.
+-   **Input**: CSV files from `csvfiles/` (e.g., `*_statistics.csv`).
+-   **Metrics**: Cluster size distributions and critical behavior.
 
 ## Concurrency & Performance
 
@@ -161,15 +161,15 @@ Two levels of concurrency:
 
 Based on:
 
-1.  **Paper 1**: [Phys. Rev. B 82 054437 (2010)](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.82.054437)
-2.  **Paper 2**: [Phys. Rev. B 83 174207 (2011)](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.83.174207)
-3.  **Paper 3**: [J. Phys.: Condens. Matter 23 404204 (2011)](https://iopscience.iop.org/article/10.1088/0953-8984/23/40/404204)
-4.  **Paper 4**: [EPL 97 67009 (2012)](https://iopscience.iop.org/article/10.1209/0295-5075/97/67009)
-5.  **Paper 5**: [Phys. Rev. B 103 174207 (2021)](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.103.174207)
+1.  [Phys. Rev. B 82, 054437 (2010)](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.82.054437)
+2.  [Phys. Rev. B 83, 174207 (2011)](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.83.174207)
+3.  [J. Phys.: Condens. Matter 23, 404204 (2011)](https://iopscience.iop.org/article/10.1088/0953-8984/23/40/404204)
+4.  [EPL 97, 67009 (2012)](https://iopscience.iop.org/article/10.1209/0295-5075/97/67009)
+5.  [Phys. Rev. B 103, 174207 (2021)](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.103.174207)
 
-**Reviews**:
-- **Part 1**: [Physics Reports 412 1 (2005)](https://www.sciencedirect.com/science/article/abs/pii/S0370157305001092)
-- **Part 2**: [Eur. Phys. J. B 91 236 (2018)](https://link.springer.com/article/10.1140/epjb/e2018-90434-8)
+Reviews:
+-   [Physics Reports 412, 1 (2005)](https://www.sciencedirect.com/science/article/abs/pii/S0370157305001092)
+-   [Eur. Phys. J. B 91, 236 (2018)](https://link.springer.com/article/10.1140/epjb/e2018-90434-8)
 
 ## License
 
