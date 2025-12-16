@@ -238,13 +238,77 @@ A significant amount of development effort went into ensuring the "Smart" algori
 $$ d_{new} = d_{old} - \frac{range_{node}}{2} $$
 It also recursively checks for negative edge creation (instabilities) and triggers `processNegativeEdge` if found.
 
+**Pseudocode**:
+```python
+function UpdateAllEdgeDistancesFromNode(node):
+    half_range = node.range / 2.0
+    
+    for each neighbor k of node:
+        old_dist = distance(node, k)
+        new_dist = old_dist - half_range
+        
+        UpdateEdge(node, k, new_dist)
+        
+        if new_dist < 0:
+            ProcessNegativeEdge(edge(node, k))
+
+    # Recursively process any new negative edges created
+    while newly_negative_edges_exist:
+        ProcessNegativeEdges(...)
+```
+
 ### 2. `reassignInactiveEdges`
 **Problem**: When a chain of nodes is decimated into a cluster, the original edges connecting the internal (now dead) nodes to the outside world must be rerouted to the new cluster "head".
 **Solution**: The function calculates the shortest path through the decimated cluster (using Activated Dijkstra) and creates new edges from the cluster head to the external neighbors, ensuring the effective coupling is physically correct.
 
+**Pseudocode**:
+```python
+function ReassignInactiveEdges(new_source, path):
+    first_node = path[0]
+    last_node = path.back()
+    
+    for k in path[1...end-1]: # Nodes inside the decimated cluster
+        # Find shortest path from k to the new cluster boundary
+        d1 = ActivatedDijkstra(k, first_node)
+        d2 = ActivatedDijkstra(k, last_node)
+        dist_to_boundary = min(d1, d2)
+        
+        # Move edges from k to new_source
+        for each neighbor m of k:
+            old_weight = distance(k, m)
+            new_weight = old_weight + dist_to_boundary
+            AddEdge(new_source, m, new_weight)
+            RemoveEdge(k, m)
+```
+
 ### 3. Topological Cleanup
 -   **`removeSelfLoops`**: Merging nodes often creates edges from a node to itself ($i \to i$). These are unphysical in this model and are removed.
 -   **`removeDuplicateEdges`**: Merging can create multiple parallel edges between two nodes. This function keeps only the strongest bond (minimum distance) and removes the rest.
+
+**Pseudocode**:
+```python
+function RemoveSelfLoops(node):
+    for each neighbor k of node:
+        if k == node:
+            RemoveEdge(node, k)
+
+function RemoveDuplicateEdges(node):
+    best_edge_to_neighbor = Map()
+    
+    # 1. Identify best edges
+    for each edge e from node to k:
+        if k not in best_edge_to_neighbor:
+             best_edge_to_neighbor[k] = e
+        else:
+             if weight(e) < weight(best_edge_to_neighbor[k]):
+                  best_edge_to_neighbor[k] = e
+                  
+    # 2. Remove all others
+    for each edge e from node:
+         k = target(e)
+         if e != best_edge_to_neighbor[k]:
+              RemoveEdge(e)
+```
 
 ---
 
@@ -258,6 +322,30 @@ Unlike the Smart mode which searches locally, the Naive mode scans the **entire*
 
 ### Decimation Logic (`dumb_decimate.cpp`)
 The rules are identical, but no complex local repair is needed since the neighbor distances will be re-evaluated globally in the next step anyway.
+
+**Pseudocode**:
+```python
+function DumbDecimate(target):
+    if target is Node:
+        # Simple status update, no complex local repair needed yet
+        target.status = Inactive
+        neighbors = GetNeighbors(target)
+        for k in neighbors:
+            for l in neighbors:
+                 if k != l: AddEffectiveEdge(k, l)
+                 
+    else if target is Edge (u, v):
+        # Merge u and v
+        new_range = u.range + v.range - dist(u, v)
+        u.range = new_range
+        v.status = Dead
+        
+        # Naively move all neighbors of v to u
+        for neighbor k of v:
+            AddEdge(u, k, distance(v, k))
+            
+        RemoveSelfLoops(u)
+```
 
 ---
 
@@ -290,3 +378,22 @@ To assist in studying the percolation properties of the random clusters, `graph_
 
 -   **Sampling**: The `sampleNodes` function performs a Monte Carlo sampling of the graph nodes to estimate the number of unique clusters without traversing every single node-link structure explicitly.
 -   **Metric**: `computeAverageSamples` gives insight into the "cover time" or how easily the cluster structure can be probed.
+
+**Pseudocode**:
+```python
+function SampleNodes(graph, num_trials):
+    total_unique_clusters = 0
+    
+    for i = 1 to num_trials:
+        # Pick random nodes
+        subset = SelectRandomNodes(graph)
+        
+        # Count how many distinct clusters they hit
+        unique_cluster_ids = Set()
+        for node in subset:
+            unique_cluster_ids.add(node.clusterIndex)
+            
+        total_unique_clusters += unique_cluster_ids.size()
+        
+    return total_unique_clusters / num_trials
+```
