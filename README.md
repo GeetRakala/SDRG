@@ -8,7 +8,7 @@ The Strong Disorder Renormalisation Group (SDRG) method is a powerful technique 
 
 ### Key Features
 - **Efficient Graph Representation**: Utilizes Boost Graph Library for optimized performance.
-- **Model Support**: capable of simulating random transverse-field Ising models and Potts models.
+- **Model Support**: Capable of simulating random transverse-field Ising models and Potts models.
 - **Lattice Support**: Supports both **Chain** (1D) and **Square** (2D) lattice geometries.
 - **Parallel Execution**: Includes scripts for parallelizing simulations across multiple parameters using GNU Parallel.
 - **Advanced Metrics**: Calculates cluster statistics and entanglement measures:
@@ -96,7 +96,7 @@ Use `run.sh` to execute a simulation with specific parameters in an isolated env
 ```
 
 ### 3. Massively Parallel Execution
-Use `parallel.sh` runs multiple instances of `run.sh` concurrently using GNU Parallel. Edit `parallel.sh` to define your parameter ranges.
+Use `parallel.sh` to run multiple instances of `run.sh` concurrently using GNU Parallel. Edit `parallel.sh` to define your parameter ranges.
 
 ```bash
 # Example from parallel.sh
@@ -136,8 +136,6 @@ This notebook visualizes the decimation process on the 2D lattice.
 This notebook analyzes the statistical properties of the decimated graph.
 
 -   **Input**: Reads CSV files generated in the `csvfiles/` directory (e.g., `*_statistics.csv`).
--   **Metrics**: Plots the distribution of cluster sizes and other relevant physical quantities to study the critical behavior.
-
 -   **Metrics**: Plots the distribution of cluster sizes and other relevant physical quantities to study the critical behavior.
 
 ## Concurrency & Performance

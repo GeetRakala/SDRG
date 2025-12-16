@@ -4,7 +4,7 @@ This document provides a comprehensive deep-dive into the Numerical Strong Disor
 
 ## 1. Codebase Architecture
 
-The project is structured to separate concern between graph representation, algorithmic logic, and input/output operations.
+The project is structured to separate concerns between graph representation, algorithmic logic, and input/output operations.
 
 | File | Purpose |
 | :--- | :--- |
@@ -170,22 +170,18 @@ J_{new} \approx \frac{J_{ik} J_{il}}{h_i} \implies \tilde{d}_{kl} = d_{ik} + d_{
 **Pseudocode**:
 ```python
 function DecimateNode(node_i):
-    Mark node_i as Inactive
+    # Mark node_i and all nodes in the same cluster as Inactive
+    cluster = GetCluster(node_i)
+    for node in cluster:
+        Mark node as Inactive
     
-    For each pair of neighbors (k, l) of i:
-        d_ik = distance(i, k)
-        d_il = distance(i, l)
-        
-        # Calculate new effective distance
-        new_dist = d_ik + d_il - node_i.range
-        
-        # Add effective edge between k and l
-        AddEdge(k, l, new_dist)
-        
-    Remove all original edges connected to node_i
-    ProcessNegativeEdges(k) # Check for stability
-    UpdateAllEdgeDistancesFromNode(node_i) # Trigger local repair
+    # Update all outgoing edge distances
+    # This triggers renormalization of effective couplings
+    UpdateAllEdgeDistancesFromNode(node_i)
 ```
+
+> [!NOTE]
+> In the Smart algorithm, node decimation does NOT explicitly create new edges between pairs of neighbors. Instead, the effective couplings are implicitly maintained through the `updateAllEdgeDistancesFromNode` call, which renormalizes the outgoing distances. New effective edges between former neighbors are discovered naturally by subsequent Dijkstra searches through the now-Inactive node.
 
 ### Edge Decimation
 Occurs when a bond coupling $\Omega = J_{ij}$ is the largest energy scale. The two sites $i$ and $j$ effectively lock into a single cluster.
@@ -197,42 +193,64 @@ h_{new} \approx \frac{h_i h_j}{J_{ij}} \implies \tilde{r}_{new} = r_i + r_j - d_
 
 **Pseudocode**:
 ```python
-function DecimateEdge(node_i, node_j, dist_ij):
-    # Merge clusters
-    Cluster_i = node_i.clusterIndex
-    Cluster_j = node_j.clusterIndex
-    MergeClusters(Cluster_i, Cluster_j)
+function DecimateEdge(path, dist_ij):
+    # path = [firstNode, ...intermediate inactive nodes..., lastNode]
+    firstNode = path[0]
+    lastNode = path.back()
     
-    # Calculate new effective moment
-    new_range = node_i.range + node_j.range - dist_ij
+    # 1. Calculate new effective moment for merged cluster
+    new_range = firstNode.range + lastNode.range - dist_ij
+    firstNode.range = new_range
     
-    # Update node_i to represent the new cluster moment
-    node_i.range = new_range
-    Mark node_j as Dead
+    # 2. Merge cluster indices
+    MergeClusters(firstNode.clusterIndex, lastNode.clusterIndex)
     
-    # Reassign j's neighbors to i
-    For each neighbor k of j:
-        d_jk = distance(j, k)
-        d_ik_effective = EffectiveDistance(i, k) # via Dijkstra check
-        
-        AddEdge(i, k, min(d_jk, d_ik_effective))
-        
-    Remove self-loops and duplicate edges on node_i
+    # 3. Update neighbor edge distances via Dijkstra
+    UpdateNeighborEdgeDistances(lastNode)
+    UpdateFirstNeighborEdgeDistances(lastNode, firstNode)
+    
+    # 4. Reassign all edges from lastNode to firstNode
+    ReassignEdges(firstNode, lastNode)
+    
+    # 5. Reassign edges from intermediate inactive nodes in path
+    ReassignInactiveEdges(firstNode, path)
+    
+    # 6. Topological cleanup
+    RemoveSelfLoops(firstNode)
+    RemoveDuplicateEdges(firstNode)
+    
+    # 7. Mark all nodes except firstNode as Dead
+    for node in path[1:]:
+        Mark node as Dead
 ```
 
 ### Instability Handling (`processNegativeEdge`)
-In 2D/3D, the subtraction $d_{ik} + d_{il} - r_i$ can sometimes yield a negative value, implying an unphysical "infinite" coupling. This code handles it by recursively merging nodes.
+In 2D/3D, the subtraction $d_{ik} + d_{il} - r_i$ can sometimes yield a negative value, implying an unphysical "infinite" coupling. This scenario is handled by creating shortcut edges that bypass the problematic node.
 
 **Pseudocode**:
 ```python
-function ProcessNegativeEdges(node):
-    For each neighbor k of node:
-        if distance(node, k) < 0:
-            # Treats infinite coupling as an immediate edge decimation
-            Make k Dead
-            Merge Cluster(k) into Cluster(node)
-            Recursively ProcessNegativeEdges(node)
+function ProcessNegativeEdge(edge(source, target), negative_distance):
+    # Create shortcut edges from source to all neighbors of target
+    for each neighbor k of target (excluding source):
+        d_target_k = distance(target, k)
+        new_distance = negative_distance + d_target_k
+        
+        if edge(source, k) exists:
+            # Keep the minimum distance
+            UpdateEdge(source, k, min(existing_distance, new_distance))
+        else:
+            AddEdge(source, k, new_distance)
+        
+        # If new edge is also negative, queue for processing
+        if new_distance < 0:
+            AddToNegativeEdgeQueue(edge(source, k))
+    
+    # Remove all edges connected to target
+    RemoveAllEdges(target)
 ```
+
+> [!IMPORTANT]
+> `processNegativeEdge` does NOT mark nodes as Dead or merge clusters directly. It creates shortcut edges that effectively bypass the target node, preserving the graph's connectivity while resolving the instability.
 
 ---
 
@@ -244,7 +262,7 @@ A significant amount of development effort went into ensuring the "Smart" algori
 **Problem**: When a node's moment $h_i$ changes (or is decimated), the effective distances to *all* its neighbors change.
 **Solution**: This function iterates over all incident edges and updates their weights:
 ```math
-d_{new} = d_{old} - \frac{range_{node}}{2}
+d_{new} = d_{old} - \frac{r_i}{2}
 ```
 It also recursively checks for negative edge creation (instabilities) and triggers `processNegativeEdge` if found.
 
@@ -334,7 +352,7 @@ Currently, the repair logic prioritizes correctness over absolute peak performan
 
 3.  **Lazy Updates**:
     -   **Current**: `updateAllEdgeDistancesFromNode` eagerly updates every single neighbor's edge weight immediately after a renormalization step.
-    -   **Proposed**: Store a "range shift" accumulator on nodes. Only apply the subtraction $d_{new} = d_{old} - \Delta range$ lazily when the edge is next accessed during a search. This avoids processing edges that might be decimated later before they are ever traversed again.
+    -   **Proposed**: Store a "range shift" accumulator on nodes. Only apply the subtraction $d_{new} = d_{old} - \Delta r$ lazily when the edge is next accessed during a search. This avoids processing edges that might be decimated later before they are ever traversed again.
 
 ---
 
@@ -353,24 +371,43 @@ The rules are identical, but no complex local repair is needed since the neighbo
 ```python
 function DumbDecimate(target):
     if target is Node:
-        # Simple status update, no complex local repair needed yet
-        target.status = Inactive
+        # Mark all nodes in the same cluster as Inactive
+        cluster = GetCluster(target)
+        for node in cluster:
+            Mark node as Inactive
+        
+        # Create effective edges between all pairs of neighbors
         neighbors = GetNeighbors(target)
         for k in neighbors:
             for l in neighbors:
-                 if k != l: AddEffectiveEdge(k, l)
+                if k != l:
+                    # Calculate effective coupling through decimated node
+                    new_weight = dist(target, k) + dist(target, l) - target.range
+                    AddEdge(k, l, new_weight)
+        
+        # Remove duplicate edges on each neighbor (keep minimum)
+        for k in neighbors:
+            RemoveDuplicateEdges(k)
+        
+        # Remove all edges from decimated node
+        RemoveOutEdges(target)
                  
-    else if target is Edge (u, v):
+    else if target is Edge (path from u to v):
         # Merge u and v
         new_range = u.range + v.range - dist(u, v)
         u.range = new_range
-        v.status = Dead
         
-        # Naively move all neighbors of v to u
-        for neighbor k of v:
-            AddEdge(u, k, distance(v, k))
-            
+        # Reassign all edges from path nodes to u
+        for node in path[1:]:
+            ReassignEdges(u, node)
+        
+        # Cleanup
         RemoveSelfLoops(u)
+        RemoveDuplicateEdges(u)
+        
+        # Mark all nodes except first as Dead
+        for node in path[1:]:
+            Mark node as Dead
 ```
 
 ---
@@ -390,6 +427,7 @@ Used for parameter sweeps via `parallel.sh`, which wraps GNU Parallel to distrib
 ### Potential Optimizations
 1.  **Lock-Free Accumulation**: `calculateClusterStatistics` uses a shared mutex to merge results from every chunk. Using thread-local accumulation maps and a single final reduction step would eliminate contention.
 2.  **Work Stealing**: Static chunking does not account for variance in cluster processing time. A work-stealing queue would better balance the load across threads.
+
 ---
 
 ## 10. Visualization
@@ -405,26 +443,33 @@ The project generates artifacts that can be visualized using Python notebooks in
 
 To assist in studying the percolation properties of the random clusters, `graph_persistence.cpp` tools are available.
 
--   **Sampling**: The `sampleNodes` function performs a Monte Carlo sampling of the graph nodes to estimate the number of unique clusters without traversing every single node-link structure explicitly.
--   **Metric**: `computeAverageSamples` gives insight into the "cover time" or how easily the cluster structure can be probed.
+-   **Sampling**: The `sampleNodes` function performs a "coupon collector" style sampling — it counts how many random node samples are needed until every unique cluster has been seen at least once.
+-   **Metric**: `computeAverageSamples` averages this count over multiple trials to estimate the expected "cover time" for the cluster structure.
 
 **Pseudocode**:
 ```python
-function SampleNodes(graph, num_trials):
-    total_unique_clusters = 0
+function SampleNodes(graph):
+    all_clusters = GetUniqueClusters(graph)
+    seen_clusters = Set()
+    samples = 0
+    nodes = GetAllNodes(graph)
     
+    # Sample until all clusters are represented
+    while seen_clusters.size() < all_clusters.size():
+        Shuffle(nodes)  # Randomize order
+        for node in nodes:
+            seen_clusters.add(node.clusterIndex)
+            samples += 1
+            if seen_clusters.size() == all_clusters.size():
+                break
+    
+    return samples  # Number of samples needed to hit all clusters
+
+function ComputeAverageSamples(graph, num_trials):
+    total = 0
     for i = 1 to num_trials:
-        # Pick random nodes
-        subset = SelectRandomNodes(graph)
-        
-        # Count how many distinct clusters they hit
-        unique_cluster_ids = Set()
-        for node in subset:
-            unique_cluster_ids.add(node.clusterIndex)
-            
-        total_unique_clusters += unique_cluster_ids.size()
-        
-    return total_unique_clusters / num_trials
+        total += SampleNodes(graph)
+    return total / num_trials
 ```
 
 ### Potential Optimizations
