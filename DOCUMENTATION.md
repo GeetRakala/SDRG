@@ -76,7 +76,7 @@ function InitializeLattice(L, type, disorder_type, delta):
 
 ## 4. The Smart SDRG Algorithm
 
-The core of the simulation is the "Smart" algorithm. Unlike naive approaches that search the global maximum energy ($O(N)$), this method searches for a **local** minimum in the renormalized energy landscape.
+The core of the simulation is the "Smart" algorithm. Unlike naive approaches that search the global maximum energy ( $O(N)$ ), this method searches for a **local** minimum in the renormalized energy landscape.
 
 ### High-Level Flow
 ```python
@@ -325,8 +325,8 @@ function RemoveDuplicateEdges(node):
 Currently, the repair logic prioritizes correctness over absolute peak performance. Several algorithmic improvements could be implemented to speed up this phase:
 
 1.  **Batch Dijkstra for `reassignInactiveEdges`**:
-    -   **Current**: The code calls `ActivatedDijkstra` separately for every node inside the decimated cluster to find the distance to the boundary ($O(k \cdot D)$ where $k$ is cluster size).
-    -   **Proposed**: Run Dijkstra *once* starting simultaneously from all boundary nodes neighbors inwards. This effectively computes the distance field in a single pass ($O(D)$).
+    -   **Current**: The code calls `ActivatedDijkstra` separately for every node inside the decimated cluster to find the distance to the boundary ( $O(k \cdot D)$ where $k$ is cluster size).
+    -   **Proposed**: Run Dijkstra *once* starting simultaneously from all boundary nodes neighbors inwards. This effectively computes the distance field in a single pass ( $O(D)$ ).
 
 2.  **Edge Deduplication via Data Structures**:
     -   **Current**: `removeDuplicateEdges` manually filters edges using a hash map after every merge operation.
