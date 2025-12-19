@@ -76,7 +76,9 @@ function InitializeLattice(L, type, disorder_type, delta):
 
 ## 4. The Smart SDRG Algorithm
 
-The core of the simulation is the "Smart" algorithm. Unlike naive approaches that search the global maximum energy ( $O(N)$ ), this method searches for a **local** minimum in the renormalized energy landscape.
+The core of the simulation is the "Smart" algorithm. Unlike naive approaches that suffer from **connectivity explosion** in higher dimensions (leading to $O(N^3)$), this method maintains a sparse graph structure by representing effective long-range couplings as paths through inactivated sites.
+
+It searches for a **local** minimum in the renormalized energy landscape using **Activated Dijkstra**.
 
 ### High-Level Flow
 ```python
@@ -349,7 +351,10 @@ The repair logic prioritizes correctness. Potential speedups:
 For verification and performance benchmarking, the codebase includes a "Dumb" mode (enabled via `dumb = true` in `config.txt`). This implements the standard, brute-force SDRG approach.
 
 ### Search (`dumb_search.cpp`)
-Scans the entire graph at every step to find the global minimum. Complexity: $O(N)$ per step → $O(N^2)$ total.
+Scans the entire graph at every step to find the global minimum.
+
+*   **1D Chain**: Linear connectivity. Complexity: $O(N)$ per step → $O(N^2)$ total.
+*   **2D+ Lattices**: **Connectivity Explosion**. As nodes are decimated, new effective couplings generate a "fully connected" cluster. The number of edges $E \to O(N^2)$. Scanning all edges takes $O(N^2)$ per step → **$O(N^3)$ total**.
 
 ### Decimation (`dumb_decimate.cpp`)
 Same renormalization rules, but no local repair needed since the next step rescans globally.
@@ -457,3 +462,28 @@ function ComputeAverageSamples(graph, num_trials):
 
 ### Potential Optimizations
 1.  **Union-Find Data Structure**: The current sampling logic implicitly traverses the graph or relies on properties that might be slow to query. Implementing a Union-Find (Disjoint Set Union) structure would allow $O(1)$ verification of whether two nodes belong to the same cluster, significantly speeding up the unique cluster counting in `SampleNodes`.
+
+---
+
+## 12. Complexity Analysis: Derivation of $O(N \ln N)$
+
+The improved efficiency of the Smart algorithm over the Naive approach arises from preventing the explosion of graph connectivity.
+
+### The Naive Algorithm ($O(N^3)$)
+
+In the standard approach for $d \ge 2$, removing a site requires generating effective couplings between *all* pairs of its neighbors.
+1.  **Graph Density**: As decimations proceed, the local coordination number grows. The system evolves into a "hairball" where every site is connected to $O(N)$ other sites. The total number of edges $|E| \to O(N^2)$.
+2.  **Search Cost**: Finding the global maximum energy requires scanning all $|E|$ edges. Cost $\approx O(N^2)$ per step.
+3.  **Total Runtime**:
+    $$ T_{naive} \approx \sum_{step=1}^{N} O(N^2) \approx \frac{N^3}{3} \implies \mathbf{O(N^3)} $$
+
+### The Smart Algorithm ($O(N \ln N)$)
+
+The deactivated-site approach maintains the original lattice topology.
+1.  **Sparsity**: Physical edges are never added, only reweighted/removed. The graph remains strictly sparse ($|E| \propto N$).
+2.  **Activated Search**: Instead of scanning all edges, we search for the nearest *active* neighbor using Dijkstra.
+    -   The search volume is **localized**. The algorithm aborts as soon as the nearest active node is found.
+    -   Average cost per step is $O(k \ln N)$ where $k$ is the effective coordination number (roughly constant), not the total edges $O(N)$.
+3.  **Total Runtime**:
+    $$ T_{smart} \approx \sum_{step=1}^{N} O(\ln N) \implies \mathbf{O(N \ln N)} $$
+
