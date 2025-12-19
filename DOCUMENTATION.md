@@ -475,9 +475,9 @@ In the standard approach for $d \ge 2$, removing a site requires generating effe
 1.  **Graph Density**: As decimations proceed, the local coordination number grows. The system evolves into a "hairball" where every site is connected to $O(N)$ other sites. The total number of edges $|E| \to O(N^2)$.
 2.  **Search Cost**: Finding the global maximum energy requires scanning all $|E|$ edges. Cost $\approx O(N^2)$ per step.
 3.  **Total Runtime**:
-    ```math
+```math
     T_{naive} \approx \sum_{step=1}^{N} O(N^2) \approx \frac{N^3}{3} \implies \mathbf{O(N^3)}
-    ```
+```
 
 ### The Smart Algorithm ( $O(N \ln N)$ )
 
@@ -487,7 +487,7 @@ The deactivated-site approach maintains the original lattice topology.
     -   The search volume is **localized**. The algorithm aborts as soon as the nearest active node is found.
     -   Average cost per step is $O(k \ln N)$ where $k$ is the effective coordination number (roughly constant), not the total edges $O(N)$.
 3.  **Total Runtime**:
-    ```math
+```math
     T_{smart} \approx \sum_{step=1}^{N} O(\ln N) \implies \mathbf{O(N \ln N)}
-    ```
+```
 
