@@ -429,7 +429,7 @@ Python notebooks in `notebooks/`:
 
 ---
 
-## 11. Advanced Topics: Graph Persistence
+## 11. Graph Persistence
 
 Tools in `graph_persistence.cpp` for studying percolation properties:
 
